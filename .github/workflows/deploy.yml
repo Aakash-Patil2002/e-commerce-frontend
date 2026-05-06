@@ -1,39 +1,41 @@
-name: Deploy Frontend to S3
+name: Deploy React App
 
 on:
   push:
     branches:
       - main
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Build Docker image
+        run: docker build -t react-app .
+
+      - name: Save Docker image
+        run: docker save react-app > react-app.tar
+
+      - name: Copy to EC2
+        uses: appleboy/scp-action@v0.1.4
         with:
-          node-version: 18
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "react-app.tar"
+          target: "/home/ubuntu"
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build project
-        run: npm run build
-
-      - name: Install AWS CLI
-        run: sudo apt-get update && sudo apt-get install awscli -y
-
-      - name: Deploy to S3
-        run: |
-          aws s3 sync build/ s3://${{ secrets.S3_BUCKET_NAME }} --delete
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            docker load < react-app.tar
+            docker stop react-app || true
+            docker rm react-app || true
+            docker run -d -p 80:80 --name react-app react-app
