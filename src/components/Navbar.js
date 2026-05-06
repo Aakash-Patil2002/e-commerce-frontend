@@ -20,7 +20,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="container flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-          <Package className="text-primary" /> Aakash Patil Commerce
+          <Package className="text-primary" /> THIS IS TESTING CICD
         </Link>
         <div className="nav-links">
           {user?.role === 'admin' && (
